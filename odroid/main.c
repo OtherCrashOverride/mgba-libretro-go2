@@ -368,7 +368,7 @@ int main(int argc, char** argv)
 		.rewindEnable = false,
 		.rewindBufferCapacity = 600,
 		.audioBuffers = 1024,
-		.videoSync = false,
+		.videoSync = true,
 		.audioSync = true,
 		.volume = 0x100,
 	};
