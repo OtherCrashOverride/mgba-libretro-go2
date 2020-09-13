@@ -554,6 +554,24 @@ int main(int argc, char** argv)
     pthread_create(&thread_id, NULL, audio_task, (void*)&thread);
 
 
+    // Check for override of save state
+    go2_gamepad_state_t gamepad;
+    go2_gamepad_state_t prevGamepad;
+
+    go2_input_gamepad_read(input, &gamepad);
+    prevGamepad = gamepad;
+
+    bool restart;
+    if (gamepad.buttons.f1)
+    {
+        restart = true;
+    }
+    else
+    {
+        restart = false;
+    }
+    
+
     // Restore
     const char* fileName = FileNameFromPath(filename);
     
@@ -579,7 +597,10 @@ int main(int argc, char** argv)
     
 
     mCoreThreadInterrupt(&thread);
-    LoadState(savePath);
+    if (!restart)
+    {
+        LoadState(savePath);
+    }
     LoadSram(sramPath);    
     mCoreThreadContinue(&thread);
 
@@ -588,11 +609,10 @@ int main(int argc, char** argv)
 	while (1) 
     {
 		// After receiving the keys from the client, tell the core that these are
-		// the keys for the current input.
-        go2_gamepad_state_t gamepad;
+		// the keys for the current input.        
         go2_input_gamepad_read(input, &gamepad);
 
-        if (gamepad.buttons.f1)
+        if (!prevGamepad.buttons.f1 && gamepad.buttons.f1)
         {
             isRunning = false;
             mCoreThreadEnd(&thread);
@@ -621,6 +641,8 @@ int main(int argc, char** argv)
         mCoreThreadInterrupt(&thread);
         core->setKeys(core, keys);
         mCoreThreadContinue(&thread);
+
+        prevGamepad = gamepad;
 
 
         if (mCoreSyncWaitFrameStart(&thread.impl->sync))
