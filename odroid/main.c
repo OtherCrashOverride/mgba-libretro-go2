@@ -57,6 +57,10 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #define SAMPLES (1024)
 
 
+#define REGION_CART_SRAM (0xE)
+#define GB_REGION_EXTERNAL_RAM (0xA)
+
+
 static struct mLogger logger;
 static struct mCore* core;
 
@@ -199,6 +203,39 @@ static int LoadState(const char* saveName)
     return 0;
 }
 
+static int LoadSram(const char* sramName)
+{
+    FILE* file = fopen(sramName, "rb");
+	if (!file)
+		return -1;
+
+	fseek(file, 0, SEEK_END);
+	long size = ftell(file);
+	rewind(file);
+
+    void* sram = malloc(size);
+    if (!sram) abort();
+
+    size_t count = fread(sram, 1, size, file);
+    if (count != size)
+    {
+        abort();
+    }
+
+    bool writeback = false;
+    if (core->platform(core) == PLATFORM_GB)
+    {
+        writeback = true;
+    }
+
+    core->savedataRestore(core, sram, size, writeback); 
+
+    free(sram);
+    fclose(file);
+
+    return 0;
+}
+
 static void SaveState(const char* saveName)
 {
     struct VFile* vfm = VFileMemChunk(NULL, 0);
@@ -227,6 +264,23 @@ static void SaveState(const char* saveName)
     fclose(file);
 
     free(buffer);
+}
+
+static void SaveSram(const char* sramName, void* sram, size_t sramSize)
+{
+    FILE* file = fopen(sramName, "wb");
+	if (!file)
+    {
+		abort();
+    }
+
+    size_t count = fwrite(sram, 1, sramSize, file);
+    if (count != sramSize)
+    {
+        abort();
+    }
+
+    fclose(file);
 }
 
 volatile bool isRunning = true;
@@ -354,6 +408,7 @@ int main(int argc, char** argv)
 
 
  	// Tell the core to actually load the file.
+    //core->loadROM(core, rom);
 	mCoreLoadFile(core, filename);
 
 
@@ -512,10 +567,21 @@ int main(int argc, char** argv)
 
     char* savePath = PathCombine(homedir, saveName);
     printf("savePath='%s'\n", savePath);
+     
+
+    // SRAM
+    char* sramName = (char*)malloc(strlen(fileName) + 4 + 1);
+    strcpy(sramName, fileName);
+    strcat(sramName, ".srm");
+    
+    char* sramPath = PathCombine(homedir, sramName);
+    printf("sramPath='%s'\n", sramPath);
+    
+
     mCoreThreadInterrupt(&thread);
     LoadState(savePath);
+    LoadSram(sramPath);    
     mCoreThreadContinue(&thread);
-    
 
 
     // Main loop
@@ -650,6 +716,23 @@ int main(int argc, char** argv)
     // Save
     SaveState(savePath);
     free(savePath);
+
+
+    void* sram;
+    size_t size;
+    if (core->platform(core) == PLATFORM_GB)
+    {
+        sram = core->getMemoryBlock(core, GB_REGION_EXTERNAL_RAM, &size);
+    }
+    else
+    {        
+        sram = core->getMemoryBlock(core, REGION_CART_SRAM, &size);
+    }
+
+    printf("SAVE: SRAM size=%ld\n", size);
+
+    SaveSram(sramPath, sram, size);
+    free(sramPath);
 
 
 	// Deinitialization associated with the core.
