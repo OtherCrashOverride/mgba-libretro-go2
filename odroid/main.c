@@ -751,9 +751,12 @@ int main(int argc, char** argv)
         sram = core->getMemoryBlock(core, REGION_CART_SRAM, &size);
     }
 
-    printf("SAVE: SRAM size=%ld\n", size);
+    if (size > 0)
+    {
+        printf("SAVE: SRAM size=%ld\n", size);
+        SaveSram(sramPath, sram, size);
+    }
 
-    SaveSram(sramPath, sram, size);
     free(sramPath);
 
 
