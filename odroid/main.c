@@ -347,6 +347,9 @@ int main(int argc, char** argv)
     }
 
     display = go2_display_create();
+    int dw = go2_display_height_get(display);
+    int dh = go2_display_width_get(display);
+        
     presenter = go2_presenter_create(display, /*DRM_FORMAT_RGB565*/ DRM_FORMAT_RGB565, 0xff080808);
 
     go2_context_attributes_t attr;
@@ -605,6 +608,8 @@ int main(int argc, char** argv)
     mCoreThreadContinue(&thread);
 
 
+    int sw = (dh * 1.5f);
+
     // Main loop
 	while (1) 
     {
@@ -720,7 +725,7 @@ int main(int argc, char** argv)
             go2_presenter_post(presenter,
                         surface,
                         0, 0, 480, 320,
-                        0, 0, 320, 480,
+                        0, (dw - sw) / 2, dh, sw,
                         GO2_ROTATION_DEGREES_270);
             go2_context_surface_unlock(context, surface);           
         }
